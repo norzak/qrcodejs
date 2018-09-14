@@ -171,108 +171,9 @@ var QRCode;
 		
 		return android;
 	}
-	
-	var svgDrawer = (function() {
-
-		var Drawing = function (el, htOption) {
-			this._el = el;
-			this._htOption = htOption;
-		};
-
-		Drawing.prototype.draw = function (oQRCode) {
-			var _htOption = this._htOption;
-			var _el = this._el;
-			var nCount = oQRCode.getModuleCount();
-			var nWidth = Math.floor(_htOption.width / nCount);
-			var nHeight = Math.floor(_htOption.height / nCount);
-
-			this.clear();
-
-			function makeSVG(tag, attrs) {
-				var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-				for (var k in attrs)
-					if (attrs.hasOwnProperty(k)) el.setAttribute(k, attrs[k]);
-				return el;
-			}
-
-			var svg = makeSVG("svg" , {'viewBox': '0 0 ' + String(nCount) + " " + String(nCount), 'width': '100%', 'height': '100%', 'fill': _htOption.colorLight});
-			svg.setAttributeNS("http://www.w3.org/2000/xmlns/", "xmlns:xlink", "http://www.w3.org/1999/xlink");
-			_el.appendChild(svg);
-
-			svg.appendChild(makeSVG("rect", {"fill": _htOption.colorLight, "width": "100%", "height": "100%"}));
-			svg.appendChild(makeSVG("rect", {"fill": _htOption.colorDark, "width": "1", "height": "1", "id": "template"}));
-
-			for (var row = 0; row < nCount; row++) {
-				for (var col = 0; col < nCount; col++) {
-					if (oQRCode.isDark(row, col)) {
-						var child = makeSVG("use", {"x": String(col), "y": String(row)});
-						child.setAttributeNS("http://www.w3.org/1999/xlink", "href", "#template")
-						svg.appendChild(child);
-					}
-				}
-			}
-		};
-		Drawing.prototype.clear = function () {
-			while (this._el.hasChildNodes())
-				this._el.removeChild(this._el.lastChild);
-		};
-		return Drawing;
-	})();
-
-	var useSVG = document.documentElement.tagName.toLowerCase() === "svg";
 
 	// Drawing in DOM by using Table tag
-	var Drawing = useSVG ? svgDrawer : !_isSupportCanvas() ? (function () {
-		var Drawing = function (el, htOption) {
-			this._el = el;
-			this._htOption = htOption;
-		};
-			
-		/**
-		 * Draw the QRCode
-		 * 
-		 * @param {QRCode} oQRCode
-		 */
-		Drawing.prototype.draw = function (oQRCode) {
-            var _htOption = this._htOption;
-            var _el = this._el;
-			var nCount = oQRCode.getModuleCount();
-			var nWidth = Math.floor(_htOption.width / nCount);
-			var nHeight = Math.floor(_htOption.height / nCount);
-			var aHTML = ['<table style="border:0;border-collapse:collapse;">'];
-			
-			for (var row = 0; row < nCount; row++) {
-				aHTML.push('<tr>');
-				
-				for (var col = 0; col < nCount; col++) {
-					aHTML.push('<td style="border:0;border-collapse:collapse;padding:0;margin:0;width:' + nWidth + 'px;height:' + nHeight + 'px;background-color:' + (oQRCode.isDark(row, col) ? _htOption.colorDark : _htOption.colorLight) + ';"></td>');
-				}
-				
-				aHTML.push('</tr>');
-			}
-			
-			aHTML.push('</table>');
-			_el.innerHTML = aHTML.join('');
-			
-			// Fix the margin values as real size.
-			var elTable = _el.childNodes[0];
-			var nLeftMarginTable = (_htOption.width - elTable.offsetWidth) / 2;
-			var nTopMarginTable = (_htOption.height - elTable.offsetHeight) / 2;
-			
-			if (nLeftMarginTable > 0 && nTopMarginTable > 0) {
-				elTable.style.margin = nTopMarginTable + "px " + nLeftMarginTable + "px";	
-			}
-		};
-		
-		/**
-		 * Clear the QRCode
-		 */
-		Drawing.prototype.clear = function () {
-			this._el.innerHTML = '';
-		};
-		
-		return Drawing;
-	})() : (function () { // Drawing in Canvas
+	var Drawing = (function () { // Drawing in Canvas
 		function _onMakeImage() {
 			this._elImage.src = this._elCanvas.toDataURL("image/png");
 			this._elImage.style.display = "block";
@@ -354,14 +255,14 @@ var QRCode;
     		this._android = _getAndroid();
 		
 			this._htOption = htOption;
-			this._elCanvas = document.createElement("canvas");
+			this._elCanvas = htOption.canvasElement;
 			this._elCanvas.width = htOption.width;
 			this._elCanvas.height = htOption.height;
 			el.appendChild(this._elCanvas);
 			this._el = el;
 			this._oContext = this._elCanvas.getContext("2d");
 			this._bIsPainted = false;
-			this._elImage = document.createElement("img");
+			this._elImage = imgElement.imageElement;
 			this._elImage.alt = "Scan me!";
 			this._elImage.style.display = "none";
 			this._el.appendChild(this._elImage);
@@ -539,6 +440,8 @@ var QRCode;
 			typeNumber : 4,
 			colorDark : "#000000",
 			colorLight : "#ffffff",
+			imgElement : null,
+			canvasElement: null,
 			correctLevel : QRErrorCorrectLevel.H
 		};
 		
@@ -553,14 +456,6 @@ var QRCode;
 			for (var i in vOption) {
 				this._htOption[i] = vOption[i];
 			}
-		}
-		
-		if (typeof el == "string") {
-			el = document.getElementById(el);
-		}
-
-		if (this._htOption.useSVG) {
-			Drawing = svgDrawer;
 		}
 		
 		this._android = _getAndroid();
